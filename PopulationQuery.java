@@ -199,17 +199,30 @@ public class PopulationQuery {
 		int curPopulation = 0;
 		float percentage = 0;
 
+		Rectangle nwRect = this.grid[n][w];
+		Rectangle seRect = this.grid[s][e];
+
+		float minLatitude = seRect.bottom;
+		float maxLatitude = nwRect.top;
+		float minLongitude = nwRect.left;
+		float maxLongitude = seRect.right;
+
+		//Find area which we care about
 		for (int i=0;i<this.data.data.length;i++) {
 			if(this.data.data[i] == null)
 				break;
+			if (this.data.data[i].realLatitude > minLatitude && this.data.data[i].realLatitude < maxLatitude && this.data.data[i].longitude > minLongitude && this.data.data[i].longitude < maxLongitude) {
+				curPopulation += this.data.data[i].population;
+			}
 
 			totalPopulation += this.data.data[i].population;
+
 			//if(this.data.data[i].realLatitu)
-
-
 		}
 
-		return new Pair<Integer, Float>(0, (float) 0);
+
+
+		return new Pair<Integer, Float>(curPopulation, (float) curPopulation/totalPopulation);
 	}
 
 	// argument 1: file name for input data: pass this to parse
