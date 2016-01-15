@@ -48,6 +48,11 @@ public class PopulationQuery {
 	private CensusData data;
 
 	/**
+	 * Array that will hold the grid, representing the map of the US
+	 */
+	private Rectangle[][] grid;
+
+	/**
 	 * Initialize the query object by parsing the census data in the given file.
 	 *
 	 * @param filename
@@ -120,7 +125,7 @@ public class PopulationQuery {
 	 * @param versionNum
 	 *            implementation to use
 	 */
-	public float[] preprocess(int cols, int rows, int versionNum) {
+	public void preprocess(int cols, int rows, int versionNum) {
 
 		float maxLongitude = -100;
 		float minLongitude = 0;
@@ -147,12 +152,31 @@ public class PopulationQuery {
 			}
 
 		}
+		/**
 		System.out.println("Min latitude: "+minLatitude);
 		System.out.println("Max latitude: "+maxLatitude);
 		System.out.println("Min longitude: "+minLongitude);
 		System.out.println("Max longitude: "+maxLongitude);
 		float[] bounds = {minLatitude, maxLatitude, minLongitude, maxLongitude};
-		return bounds;
+		*/
+
+		// Need to set the rectangle width/height according to the max/min lat and longitude
+
+		float width = (maxLatitude - minLatitude) / (float) rows;
+		float height = (maxLongitude - minLongitude) / (float) cols;
+
+		this.grid = new Rectangle[rows][cols];
+		//System.out.println(this.grid.length+" "+this.grid[0].length);
+		for (int i = 0;i<rows;i++) {
+			for (int j = 0;j<cols;j++) {
+				Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i+1)),
+																			minLongitude+(height*j),minLongitude+(height*(j+1)));
+				grid[i][j] = box;
+				System.out.print("ROW="+i+" COL="+j+"\n"+grid[i][j]+"\n");
+			}
+			System.out.println();
+			System.out.println();
+		}
 	}
 
 	/**
@@ -170,7 +194,21 @@ public class PopulationQuery {
 	 *         population as a percentage of the total US population.
 	 */
 	public Pair<Integer, Float> singleInteraction(int w, int s, int e, int n) {
-		// YOUR CODE GOES HERE
+
+		int totalPopulation = 0;
+		int curPopulation = 0;
+		float percentage = 0;
+
+		for (int i=0;i<this.data.data.length;i++) {
+			if(this.data.data[i] == null)
+				break;
+
+			totalPopulation += this.data.data[i].population;
+			//if(this.data.data[i].realLatitu)
+
+
+		}
+
 		return new Pair<Integer, Float>(0, (float) 0);
 	}
 
@@ -235,9 +273,9 @@ public class PopulationQuery {
 			}
 			int totalPopulation = 0;
 			int population = 0;
-			float[] bounds = pq.preprocess(cols, rows, versionNum);
+			pq.preprocess(cols, rows, versionNum);
 
-			for (int i=0; i<pq.data.data.length; i++){
+			/**for (int i=0; i<pq.data.data.length; i++){
 				if (pq.data.data[i]==null){
 					break;
 				}
@@ -248,7 +286,7 @@ public class PopulationQuery {
 			}
 			System.out.println("Population: "+population);
 			System.out.println("Percentage: "+population/totalPopulation);
-
+			*/
 			// Query the population for this rectangle.
 			Pair<Integer, Float> result = pq.singleInteraction(w, s, e, n);
 			System.out.printf("Query population: %10d\n", result.getElementA());

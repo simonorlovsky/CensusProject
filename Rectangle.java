@@ -1,7 +1,7 @@
 /**
  * A class to represent a Rectangle. You do not have to use this, but it's quite
  * convenient.
- * 
+ *
  * Invariant: right >= left and top >= bottom (i.e., numbers get bigger as you
  * move up/right).
  */
@@ -10,17 +10,17 @@ public class Rectangle {
 	 * Left edge of the rectangle.
 	 */
 	public float left;
-	
+
 	/**
 	 * Right edge of the rectangle.
 	 */
 	public float right;
-	
+
 	/**
 	 * Top edge of the rectangle.
 	 */
 	public float top;
-	
+
 	/**
 	 * Bottom edge of the rectangle.
 	 */
@@ -28,7 +28,7 @@ public class Rectangle {
 
 	/**
 	 * Create a Rectangle with the given edges.
-	 * 
+	 *
 	 * @param l left edge
 	 * @param r right edge
 	 * @param t top edge
