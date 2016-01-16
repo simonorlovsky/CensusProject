@@ -56,19 +56,52 @@ public class PopulationQuery extends RecursiveAction{
 	/**
 	 * Array that will hold the grid, representing the map of the US
 	 */
-	private static Rectangle[][] grid;
+	public static Rectangle[][] grid;
 
+	/**
+	 * The lower bound to find the min/max lat/long in the data
+	 */
 	private int start;
 
+	/**
+	 * The upper bound to find the min/max lat/long in the data
+	 */
 	private int finish;
 
+	/**
+	 * The minimum latitude of the US rectangle
+	 */
 	private static float minimumLatitude = 100;
 
+	/**
+	 * The maximum latitude of the US rectangle
+	 */
 	private static float maximumLatitude;
 
+	/**
+	 * The minimum longititude of the US rectangle
+	 */
 	private static float minimumLongitude;
 
+	/**
+	 * The maximum longititude of the US rectangle
+	 */
 	private static float maximumLongitude = -100;
+
+	/**
+	 * Holds the current column number of the grid
+	 */
+	private int colNum;
+
+	/**
+	 * Holds the current row number of the grid
+	 */
+	private int rowNum;
+
+	/**
+	 * Determines how the compute function should work
+	 */
+	private static boolean computeSwitch;
 
 	// private int startCol;
 	//
@@ -101,10 +134,17 @@ public class PopulationQuery extends RecursiveAction{
 	// 	this.orientation = orientation;
 	// }
 
-	public PopulationQuery(int start, int finish, CensusData data) {
+	public PopulationQuery(int start, int finish, CensusData data, boolean computeSwitch) {
 		this.start = start;
 		this.finish = finish;
 		this.data = data;
+		this.computeSwitch = computeSwitch;
+	}
+
+	public PopulationQuery(int rowNum,int colNum, boolean computeSwitch) {
+		this.colNum = colNum;
+		this.rowNum = rowNum;
+		this.computeSwitch = computeSwitch;
 	}
 
 	/**
@@ -161,37 +201,49 @@ public class PopulationQuery extends RecursiveAction{
 
 	@Override
 	public void compute() {
-		// Threshold reachedj, find min/max long/lat sequentially
-		if( (this.finish-this.start) < SEQUENTIAL_THRESHOLD) {
-			for(int i=this.start; i<this.finish; i++){
-				// if(this.data.data[i] == null)
-				// 	break;
-				if (this.data.data[i].latitude<this.minimumLatitude){
-					// System.out.println(this.data.data[i].latitude);
-					this.minimumLatitude = this.data.data[i].latitude;
-				}
-				if (this.data.data[i].latitude>this.maximumLatitude){
-					// System.out.println(this.data.data[i].latitude);
-					this.maximumLatitude = this.data.data[i].latitude;
-				}
-				if (this.data.data[i].longitude<this.minimumLongitude){
-					// System.out.println(this.data.data[i].latitude);
-					this.minimumLongitude = this.data.data[i].longitude;
-				}
-				if (this.data.data[i].longitude>this.maximumLongitude){
-					// System.out.println(this.data.data[i].latitude);
-					this.maximumLongitude = this.data.data[i].longitude;
+		// Find the corners of the US rectangle
+		if(this.computeSwitch) {
+			// Threshold reached, find min/max long/lat sequentially
+			if( (this.finish-this.start) < SEQUENTIAL_THRESHOLD) {
+				for(int i=this.start; i<this.finish; i++){
+					// if(this.data.data[i] == null)
+					// 	break;
+					if (this.data.data[i].latitude<this.minimumLatitude){
+						// System.out.println(this.data.data[i].latitude);
+						this.minimumLatitude = this.data.data[i].latitude;
+					}
+					if (this.data.data[i].latitude>this.maximumLatitude){
+						// System.out.println(this.data.data[i].latitude);
+						this.maximumLatitude = this.data.data[i].latitude;
+					}
+					if (this.data.data[i].longitude<this.minimumLongitude){
+						// System.out.println(this.data.data[i].latitude);
+						this.minimumLongitude = this.data.data[i].longitude;
+					}
+					if (this.data.data[i].longitude>this.maximumLongitude){
+						// System.out.println(this.data.data[i].latitude);
+						this.maximumLongitude = this.data.data[i].longitude;
+					}
 				}
 			}
+			else {
+				PopulationQuery left = new PopulationQuery(this.start, (this.start+this.finish) / 2, this.data,true);
+				PopulationQuery right = new PopulationQuery( (this.finish+this.start) / 2, this.finish, this.data,true);
+				left.fork();
+				right.fork();
+				left.join();
+				right.join();
+			}
 		}
+		// Populate the grid
 		else {
-			PopulationQuery left = new PopulationQuery(this.start, (this.start+this.finish) / 2, this.data);
-			PopulationQuery right = new PopulationQuery( (this.finish+this.start) / 2, this.finish, this.data);
-			left.fork();
-			right.fork();
-			left.join();
-			right.join();
+			float width = (maximumLatitude - minimumLatitude) / (float) this.grid.length;
+			float height = (maximumLongitude - minimumLongitude) / (float) this.grid[0].length;
+			Rectangle box = new Rectangle(minimumLatitude+(width*this.rowNum), minimumLatitude+(width*(this.rowNum+1)),
+																		minimumLongitude+(height*this.colNum),minimumLongitude+(height*(this.colNum+1)));
+			grid[this.rowNum][this.colNum] = box;
 		}
+
 
 	}
 
@@ -237,7 +289,6 @@ public class PopulationQuery extends RecursiveAction{
 
 			}
 
-
 			// Need to set the rectangle width/height according to the max/min lat and longitude
 
 			float width = (maxLatitude - minLatitude) / (float) rows;
@@ -255,12 +306,18 @@ public class PopulationQuery extends RecursiveAction{
 		}
 		// Simple and Parallel
 		else if (versionNum == 2) {
-			PopulationQuery t = new PopulationQuery(0,this.data.dataSize,this.data);
+			PopulationQuery t = new PopulationQuery(0,this.data.dataSize,this.data,true);
 
 			//After the pool is finished, we will have the correct values for the min/max lat/long
 			ForkJoinPool.commonPool().invoke(t);
 
-
+			PopulationQuery[][] gridThreads = new PopulationQuery[cols][rows];
+			for (int i = 0;i<rows;i++) {
+				for (int j = 0;j<cols;j++) {
+					gridThreads[i][j] = new PopulationQuery(i,j,false);
+					ForkJoinPool.commonPool().invoke(gridThreads[i][j]);
+				}
+			}
 
 			System.out.println("minimumLatitude = "+this.minimumLatitude);
 			System.out.println("maximumLatitude = "+this.maximumLatitude);
@@ -344,8 +401,6 @@ public class PopulationQuery extends RecursiveAction{
 
 		// Parse the input data.
 		PopulationQuery pq = new PopulationQuery(filename);
-
-
 
 		// Read queries from stdin.
 		Scanner scanner = new Scanner(new BufferedInputStream(System.in));
