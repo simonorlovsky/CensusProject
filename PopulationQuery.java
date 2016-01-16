@@ -134,13 +134,13 @@ public class PopulationQuery {
 
 		for(int i=0; i<this.data.dataSize; i++){
 
-			if (this.data.data[i].realLatitude<minLatitude){
+			if (this.data.data[i].latitude<minLatitude){
 				// System.out.println(this.data.data[i].latitude);
-				minLatitude = this.data.data[i].realLatitude;
+				minLatitude = this.data.data[i].latitude;
 			}
-			if (this.data.data[i].realLatitude>maxLatitude){
+			if (this.data.data[i].latitude>maxLatitude){
 				// System.out.println(this.data.data[i].latitude);
-				maxLatitude = this.data.data[i].realLatitude;
+				maxLatitude = this.data.data[i].latitude;
 			}
 			if (this.data.data[i].longitude<minLongitude){
 				// System.out.println(this.data.data[i].latitude);
@@ -152,13 +152,6 @@ public class PopulationQuery {
 			}
 
 		}
-		/**
-		System.out.println("Min latitude: "+minLatitude);
-		System.out.println("Max latitude: "+maxLatitude);
-		System.out.println("Min longitude: "+minLongitude);
-		System.out.println("Max longitude: "+maxLongitude);
-		float[] bounds = {minLatitude, maxLatitude, minLongitude, maxLongitude};
-		*/
 
 		// Need to set the rectangle width/height according to the max/min lat and longitude
 
@@ -172,10 +165,7 @@ public class PopulationQuery {
 				Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i+1)),
 																			minLongitude+(height*j),minLongitude+(height*(j+1)));
 				grid[i][j] = box;
-				System.out.print("ROW="+i+" COL="+j+"\n"+grid[i][j]+"\n");
 			}
-			System.out.println();
-			System.out.println();
 		}
 	}
 
@@ -195,34 +185,36 @@ public class PopulationQuery {
 	 */
 	public Pair<Integer, Float> singleInteraction(int w, int s, int e, int n) {
 
-		int totalPopulation = 0;
+		float totalPopulation = 0;
 		int curPopulation = 0;
 		float percentage = 0;
 
-		Rectangle nwRect = this.grid[n][w];
-		Rectangle seRect = this.grid[s][e];
+		Rectangle nwRect = this.grid[n-1][w-1];
+		Rectangle seRect = this.grid[s-1][e-1];
 
-		float minLatitude = seRect.bottom;
-		float maxLatitude = nwRect.top;
-		float minLongitude = nwRect.left;
-		float maxLongitude = seRect.right;
+		float minLatitude = seRect.right;
+		float maxLatitude = nwRect.left;
+		float minLongitude = nwRect.top;
+		float maxLongitude = seRect.bottom;
 
-		//Find area which we care about
+		System.out.println("Min lat: "+minLatitude);
+		System.out.println("Max lat: "+maxLatitude);
+		System.out.println("Min long: "+minLongitude);
+		System.out.println("Max long: "+maxLongitude);
+
 		for (int i=0;i<this.data.data.length;i++) {
 			if(this.data.data[i] == null)
 				break;
-			if (this.data.data[i].realLatitude > minLatitude && this.data.data[i].realLatitude < maxLatitude && this.data.data[i].longitude > minLongitude && this.data.data[i].longitude < maxLongitude) {
+			if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
 				curPopulation += this.data.data[i].population;
+				System.out.println("Current population: "+ curPopulation);
 			}
 
-			totalPopulation += this.data.data[i].population;
+			totalPopulation += (float)this.data.data[i].population;
 
-			//if(this.data.data[i].realLatitu)
 		}
 
-
-
-		return new Pair<Integer, Float>(curPopulation, (float) curPopulation/totalPopulation);
+		return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
 	}
 
 	// argument 1: file name for input data: pass this to parse
@@ -288,18 +280,7 @@ public class PopulationQuery {
 			int population = 0;
 			pq.preprocess(cols, rows, versionNum);
 
-			/**for (int i=0; i<pq.data.data.length; i++){
-				if (pq.data.data[i]==null){
-					break;
-				}
-				totalPopulation+=pq.data.data[i].population;
-				if (pq.data.data[i].realLatitude>=1 && pq.data.data[i].realLatitude<=44 && pq.data.data[i].longitude>=81 && pq.data.data[i].longitude<=149){
-					population+=pq.data.data[i].population;
-				}
-			}
-			System.out.println("Population: "+population);
-			System.out.println("Percentage: "+population/totalPopulation);
-			*/
+
 			// Query the population for this rectangle.
 			Pair<Integer, Float> result = pq.singleInteraction(w, s, e, n);
 			System.out.printf("Query population: %10d\n", result.getElementA());
