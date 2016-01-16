@@ -242,6 +242,15 @@ public class PopulationQuery extends RecursiveAction{
 			Rectangle box = new Rectangle(minimumLatitude+(width*this.rowNum), minimumLatitude+(width*(this.rowNum+1)),
 																		minimumLongitude+(height*this.colNum),minimumLongitude+(height*(this.colNum+1)));
 			grid[this.rowNum][this.colNum] = box;
+
+
+
+			System.out.println(this.grid.length);
+			PopulationQuery left = new PopulationQuery(0, this.grid.length/2, this.data, false);
+			left.fork();
+			PopulationQuery right = new PopulationQuery(this.grid.length/2, this.grid.length, this.data, false);
+			right.compute();
+			left.join();
 		}
 
 
@@ -258,6 +267,7 @@ public class PopulationQuery extends RecursiveAction{
 	 *            implementation to use
 	 */
 	public void preprocess(int cols, int rows, int versionNum) {
+		this.grid = new Rectangle[rows][cols];
 
 		// Simple and sequential
 		if(versionNum == 1) {
@@ -311,7 +321,7 @@ public class PopulationQuery extends RecursiveAction{
 			//After the pool is finished, we will have the correct values for the min/max lat/long
 			ForkJoinPool.commonPool().invoke(t);
 
-			PopulationQuery[][] gridThreads = new PopulationQuery[cols][rows];
+			PopulationQuery[][] gridThreads = new PopulationQuery[rows][cols];
 			for (int i = 0;i<rows;i++) {
 				for (int j = 0;j<cols;j++) {
 					gridThreads[i][j] = new PopulationQuery(i,j,false);
@@ -370,7 +380,6 @@ public class PopulationQuery extends RecursiveAction{
 		// 	totalPopulation += (float)this.data.data[i].population;
 		//
 		// }
-
 		//return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
 		return new Pair<Integer, Float>(0,(float) 0);
 	}
