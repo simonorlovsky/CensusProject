@@ -6,12 +6,13 @@ import java.util.Scanner;
 import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.*;
 
 /**
  * This class queries census data to find population densities in different
  * areas of the US.
  */
-public class PopulationQuery {
+public class PopulationQuery extends RecursiveAction{
 
 	/**
 	 * For parsing - the number of comma-separated fields on a given line.
@@ -37,6 +38,11 @@ public class PopulationQuery {
 	public static final int LONGITUDE_INDEX = 6;
 
 	/**
+	 * The maximum number of CensusGroup objects to examine with one thread
+	 */
+	public static final int SEQUENTIAL_THRESHOLD = 10;
+
+	/**
 	 * There should be only one fork/join pool per program, so this needs to be
 	 * a static variable.
 	 */
@@ -50,7 +56,31 @@ public class PopulationQuery {
 	/**
 	 * Array that will hold the grid, representing the map of the US
 	 */
-	private Rectangle[][] grid;
+	private static Rectangle[][] grid;
+
+	private int start;
+
+	private int finish;
+
+	private static float minimumLatitude = 100;
+
+	private static float maximumLatitude;
+
+	private static float minimumLongitude;
+
+	private static float maximumLongitude = -100;
+
+	// private int startCol;
+	//
+	// private int endCol;
+	//
+	// private int startRow;
+	//
+	// private int endRow;
+	//
+	// private boolean orientation;
+
+
 
 	/**
 	 * Initialize the query object by parsing the census data in the given file.
@@ -61,6 +91,20 @@ public class PopulationQuery {
 	public PopulationQuery(String filename) {
 		// Parse the data and store it in an array.
 		this.data = parse(filename);
+	}
+
+	// public PopulationQuery(int startCol, int endCol, int startRow, int endRow, boolean orientation) {
+	// 	this.startCol = startCol;
+	// 	this.startRow = startRow;
+	// 	this.endCol = endCol;
+	// 	this.endRow = endRow;
+	// 	this.orientation = orientation;
+	// }
+
+	public PopulationQuery(int start, int finish, CensusData data) {
+		this.start = start;
+		this.finish = finish;
+		this.data = data;
 	}
 
 	/**
@@ -115,6 +159,42 @@ public class PopulationQuery {
 		return result;
 	}
 
+	@Override
+	public void compute() {
+		// Threshold reachedj, find min/max long/lat sequentially
+		if( (this.finish-this.start) < SEQUENTIAL_THRESHOLD) {
+			for(int i=this.start; i<this.finish; i++){
+				// if(this.data.data[i] == null)
+				// 	break;
+				if (this.data.data[i].latitude<this.minimumLatitude){
+					// System.out.println(this.data.data[i].latitude);
+					this.minimumLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].latitude>this.maximumLatitude){
+					// System.out.println(this.data.data[i].latitude);
+					this.maximumLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].longitude<this.minimumLongitude){
+					// System.out.println(this.data.data[i].latitude);
+					this.minimumLongitude = this.data.data[i].longitude;
+				}
+				if (this.data.data[i].longitude>this.maximumLongitude){
+					// System.out.println(this.data.data[i].latitude);
+					this.maximumLongitude = this.data.data[i].longitude;
+				}
+			}
+		}
+		else {
+			PopulationQuery left = new PopulationQuery(this.start, (this.start+this.finish) / 2, this.data);
+			PopulationQuery right = new PopulationQuery( (this.finish+this.start) / 2, this.finish, this.data);
+			left.fork();
+			right.fork();
+			left.join();
+			right.join();
+		}
+
+	}
+
 	/**
 	 * Preprocess the census data for a run using the given parameters.
 	 *
@@ -127,45 +207,65 @@ public class PopulationQuery {
 	 */
 	public void preprocess(int cols, int rows, int versionNum) {
 
-		float maxLongitude = -100;
-		float minLongitude = 0;
-		float maxLatitude = 0;
-		float minLatitude = 100;
+		// Simple and sequential
+		if(versionNum == 1) {
+			float maxLongitude = -100;
+			float minLongitude = 0;
+			float maxLatitude = 0;
+			float minLatitude = 100;
 
-		for(int i=0; i<this.data.dataSize; i++){
+			for(int i=0; i<this.data.dataSize; i++){
+				if(this.data.data[i] == null)
+					break;
 
-			if (this.data.data[i].latitude<minLatitude){
-				// System.out.println(this.data.data[i].latitude);
-				minLatitude = this.data.data[i].latitude;
-			}
-			if (this.data.data[i].latitude>maxLatitude){
-				// System.out.println(this.data.data[i].latitude);
-				maxLatitude = this.data.data[i].latitude;
-			}
-			if (this.data.data[i].longitude<minLongitude){
-				// System.out.println(this.data.data[i].latitude);
-				minLongitude = this.data.data[i].longitude;
-			}
-			if (this.data.data[i].longitude>maxLongitude){
-				// System.out.println(this.data.data[i].latitude);
-				maxLongitude = this.data.data[i].longitude;
+				if (this.data.data[i].latitude<minLatitude){
+					//System.out.println(this.data.data[i].latitude);
+					minLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].latitude>maxLatitude){
+					//System.out.println(this.data.data[i].latitude);
+					maxLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].longitude<minLongitude){
+					//System.out.println(this.data.data[i].latitude);
+					minLongitude = this.data.data[i].longitude;
+				}
+				if (this.data.data[i].longitude>maxLongitude){
+					//System.out.println(this.data.data[i].latitude);
+					maxLongitude = this.data.data[i].longitude;
+				}
+
 			}
 
+
+			// Need to set the rectangle width/height according to the max/min lat and longitude
+
+			float width = (maxLatitude - minLatitude) / (float) rows;
+			float height = (maxLongitude - minLongitude) / (float) cols;
+
+			this.grid = new Rectangle[rows][cols];
+
+			for (int i = 0;i<rows;i++) {
+				for (int j = 0;j<cols;j++) {
+					Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i+1)),
+																				minLongitude+(height*j),minLongitude+(height*(j+1)));
+					grid[i][j] = box;
+				}
+			}
 		}
+		// Simple and Parallel
+		else if (versionNum == 2) {
+			PopulationQuery t = new PopulationQuery(0,this.data.dataSize,this.data);
 
-		// Need to set the rectangle width/height according to the max/min lat and longitude
+			//After the pool is finished, we will have the correct values for the min/max lat/long
+			ForkJoinPool.commonPool().invoke(t);
 
-		float width = (maxLatitude - minLatitude) / (float) rows;
-		float height = (maxLongitude - minLongitude) / (float) cols;
 
-		this.grid = new Rectangle[rows][cols];
-		//System.out.println(this.grid.length+" "+this.grid[0].length);
-		for (int i = 0;i<rows;i++) {
-			for (int j = 0;j<cols;j++) {
-				Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i+1)),
-																			minLongitude+(height*j),minLongitude+(height*(j+1)));
-				grid[i][j] = box;
-			}
+
+			System.out.println("minimumLatitude = "+this.minimumLatitude);
+			System.out.println("maximumLatitude = "+this.maximumLatitude);
+			System.out.println("minimumLongitude = "+this.minimumLongitude);
+			System.out.println("maximumLongitude = "+this.maximumLongitude);
 		}
 	}
 
@@ -185,36 +285,37 @@ public class PopulationQuery {
 	 */
 	public Pair<Integer, Float> singleInteraction(int w, int s, int e, int n) {
 
-		float totalPopulation = 0;
-		int curPopulation = 0;
-		float percentage = 0;
+		// float totalPopulation = 0;
+		// int curPopulation = 0;
+		// float percentage = 0;
+		//
+		// Rectangle nwRect = this.grid[n-1][w-1];
+		// Rectangle seRect = this.grid[s-1][e-1];
+		//
+		// float minLatitude = seRect.right;
+		// float maxLatitude = nwRect.left;
+		// float minLongitude = nwRect.top;
+		// float maxLongitude = seRect.bottom;
+		//
+		// System.out.println("Min lat: "+minLatitude);
+		// System.out.println("Max lat: "+maxLatitude);
+		// System.out.println("Min long: "+minLongitude);
+		// System.out.println("Max long: "+maxLongitude);
+		//
+		// for (int i=0;i<this.data.data.length;i++) {
+		// 	if(this.data.data[i] == null)
+		// 		break;
+		// 	if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
+		// 		curPopulation += this.data.data[i].population;
+		// 		//System.out.println("Current population: "+ curPopulation);
+		// 	}
+		//
+		// 	totalPopulation += (float)this.data.data[i].population;
+		//
+		// }
 
-		Rectangle nwRect = this.grid[n-1][w-1];
-		Rectangle seRect = this.grid[s-1][e-1];
-
-		float minLatitude = seRect.right;
-		float maxLatitude = nwRect.left;
-		float minLongitude = nwRect.top;
-		float maxLongitude = seRect.bottom;
-
-		System.out.println("Min lat: "+minLatitude);
-		System.out.println("Max lat: "+maxLatitude);
-		System.out.println("Min long: "+minLongitude);
-		System.out.println("Max long: "+maxLongitude);
-
-		for (int i=0;i<this.data.data.length;i++) {
-			if(this.data.data[i] == null)
-				break;
-			if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
-				curPopulation += this.data.data[i].population;
-				System.out.println("Current population: "+ curPopulation);
-			}
-
-			totalPopulation += (float)this.data.data[i].population;
-
-		}
-
-		return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
+		//return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
+		return new Pair<Integer, Float>(0,(float) 0);
 	}
 
 	// argument 1: file name for input data: pass this to parse
