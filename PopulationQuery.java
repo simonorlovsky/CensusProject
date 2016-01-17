@@ -59,6 +59,11 @@ public class PopulationQuery extends RecursiveAction{
 	public static Rectangle[][] grid;
 
 	/**
+	 * Array to hold the population of each grid location in version 3
+	 */
+	public static int[][] v3Grid;
+
+	/**
 	 * The lower bound to find the min/max lat/long in the data
 	 */
 	private int start;
@@ -102,6 +107,11 @@ public class PopulationQuery extends RecursiveAction{
 	 * Determines how the compute function should work
 	 */
 	private static boolean computeSwitch;
+
+	/**
+	 *	The version number of the program
+	 */
+	private static int versionNum;
 
 	/**
 	 * Initialize the query object by parsing the census data in the given file.
@@ -308,6 +318,76 @@ public class PopulationQuery extends RecursiveAction{
 			ForkJoinPool.commonPool().invoke(gridThread);
 
 		}
+		else if (versionNum == 3) {
+			v3Grid = new int[rows][cols];
+
+			float maxLongitude = -100;
+			float minLongitude = 0;
+			float maxLatitude = 0;
+			float minLatitude = 100;
+
+			for(int i=0; i<this.data.dataSize; i++){
+				if(this.data.data[i] == null)
+					break;
+
+				if (this.data.data[i].latitude<minLatitude){
+					minLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].latitude>maxLatitude){
+					maxLatitude = this.data.data[i].latitude;
+				}
+				if (this.data.data[i].longitude<minLongitude){
+					minLongitude = this.data.data[i].longitude;
+				}
+				if (this.data.data[i].longitude>maxLongitude){
+					maxLongitude = this.data.data[i].longitude;
+				}
+			}
+
+			for (int i =0;i<this.data.dataSize;i++) {
+
+				float curLong = this.data.data[i].longitude;
+				float curLat = this.data.data[i].latitude;
+
+				int colNumber = (int) (((this.data.data[i].longitude-minLongitude) / (maxLongitude-minLongitude)) * cols);
+				int rowNumber = (int) (((this.data.data[i].latitude-minLatitude) / (maxLatitude-minLatitude)) * rows);
+
+				if(rowNumber >= 149) {
+					rowNumber = 148;
+				}
+				if(colNumber >= 108) {
+					colNumber = 107;
+				}
+				v3Grid[rowNumber][colNumber] += this.data.data[i].population;
+			}
+
+			for (int i = 0;i<rows;i++) {
+				for (int j = 0;j<cols;j++) {
+					if(i == 0) {
+						if(j == 0) {
+
+						}
+						else {
+							v3Grid[i][j] = v3Grid[i][j] + v3Grid[i][j-1];
+						}
+					}
+					else {
+						if(j == 0) {
+							v3Grid[i][j] = v3Grid[i][j] + v3Grid[i-1][j];
+						}
+						else {
+							v3Grid[i][j] = v3Grid[i][j] + v3Grid[i-1][j] + v3Grid[i][j-1] - v3Grid[i-1][j-1];
+						}
+					}
+				}
+			}
+
+			for (int i = 0;i<rows;i++) {
+				for (int j = 0;j<cols;j++) {
+					System.out.println(i+","+j+": "+v3Grid[i][j]);
+				}
+			}
+		}
 	}
 
 	/**
@@ -326,33 +406,41 @@ public class PopulationQuery extends RecursiveAction{
 	 */
 	public Pair<Integer, Float> singleInteraction(int w, int s, int e, int n) {
 
-		float totalPopulation = 0;
-		int curPopulation = 0;
-		float percentage = 0;
+		if(versionNum == 1 || versionNum == 2) {
+			float totalPopulation = 0;
+			int curPopulation = 0;
+			float percentage = 0;
 
-		Rectangle nwRect = this.grid[n-1][w-1];
-		Rectangle seRect = this.grid[s-1][e-1];
+			Rectangle nwRect = this.grid[n-1][w-1];
+			Rectangle seRect = this.grid[s-1][e-1];
 
-		float minLatitude = seRect.right;
-		float maxLatitude = nwRect.left;
-		float minLongitude = nwRect.top;
-		float maxLongitude = seRect.bottom;
+			float minLatitude = seRect.right;
+			float maxLatitude = nwRect.left;
+			float minLongitude = nwRect.top;
+			float maxLongitude = seRect.bottom;
 
-		for (int i=0;i<this.data.dataSize;i++) {
-			if(this.data.data[i].latitude > minLatitude) {
-				if(this.data.data[i].latitude < maxLatitude) {
-					if(this.data.data[i].longitude > minLongitude) {
-						if(this.data.data[i].longitude <= maxLongitude) {
-							curPopulation += this.data.data[i].population;
+			for (int i=0;i<this.data.dataSize;i++) {
+				if(this.data.data[i].latitude > minLatitude) {
+					if(this.data.data[i].latitude < maxLatitude) {
+						if(this.data.data[i].longitude > minLongitude) {
+							if(this.data.data[i].longitude <= maxLongitude) {
+								curPopulation += this.data.data[i].population;
+							}
 						}
 					}
 				}
-			}
-			totalPopulation += (float) this.data.data[i].population;
+				totalPopulation += (float) this.data.data[i].population;
 
+			}
+			return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
+			// return new Pair<Integer, Float>(0,(float) 0);
 		}
-		return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
-		// return new Pair<Integer, Float>(0,(float) 0);
+		else { //if(versionNum == 3) {
+
+			return new Pair<Integer, Float>(0,(float) 0);
+		}
+
+
 	}
 
 	// argument 1: file name for input data: pass this to parse
@@ -362,7 +450,7 @@ public class PopulationQuery extends RecursiveAction{
 	public static void main(String[] args) {
 		// Parse the command-line arguments.
 		String filename;
-		int cols, rows, versionNum;
+		int cols, rows;
 		try {
 			filename = args[0];
 			cols = Integer.parseInt(args[1]);
@@ -372,6 +460,7 @@ public class PopulationQuery extends RecursiveAction{
 			Matcher m = p.matcher(versionStr);
 			m.matches();
 			versionNum = Integer.parseInt(m.group(1));
+
 		} catch (Exception e) {
 			System.out
 					.println("Usage: java PopulationQuery <filename> <rows> <cols> -v<num>");

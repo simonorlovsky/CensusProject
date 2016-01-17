@@ -27,6 +27,11 @@ public class Rectangle {
 	public float bottom;
 
 	/**
+	 * Population of the Rectangle
+	 */
+	public int population;
+
+	/**
 	 * Create a Rectangle with the given edges.
 	 *
 	 * @param l left edge
@@ -39,7 +44,26 @@ public class Rectangle {
 		right = r;
 		top = t;
 		bottom = b;
+		population = 0;
 	}
+
+	/**
+	 * Create a Rectangle with the given edges and population
+	 *
+	 * @param l left edge
+	 * @param r right edge
+	 * @param t top edge
+	 * @param b bottom edge
+	 * @param p population
+	 *
+	 */
+	 public Rectangle(float l, float r, float t, float b, int p) {
+		left = l;
+ 		right = r;
+ 		top = t;
+ 		bottom = b;
+		population = p;
+	 }
 
 	/**
 	 * Returns a new Rectangle that is the smallest rectangle containing this
@@ -53,6 +77,13 @@ public class Rectangle {
 				this.right, that.right), Math.max(this.top, that.top),
 				Math.min(this.bottom, that.bottom));
 	}
+
+	/**
+	 * Updates the rectangle's population
+	 */
+	 public void updateRectangle(int i) {
+		 population += i;
+	 }
 
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
