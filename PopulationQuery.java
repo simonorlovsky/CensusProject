@@ -91,12 +91,12 @@ public class PopulationQuery extends RecursiveAction{
 	/**
 	 * Holds the current column number of the grid
 	 */
-	private int colNum;
+	private int startCol;
 
 	/**
 	 * Holds the current row number of the grid
 	 */
-	private int rowNum;
+	private int endCol;
 
 	/**
 	 * Determines how the compute function should work
@@ -141,9 +141,9 @@ public class PopulationQuery extends RecursiveAction{
 		this.computeSwitch = computeSwitch;
 	}
 
-	public PopulationQuery(int rowNum,int colNum, boolean computeSwitch) {
-		this.colNum = colNum;
-		this.rowNum = rowNum;
+	public PopulationQuery(int startCol,int endCol, boolean computeSwitch) {
+		this.startCol = startCol;
+		this.endCol = endCol;
 		this.computeSwitch = computeSwitch;
 	}
 
@@ -237,20 +237,28 @@ public class PopulationQuery extends RecursiveAction{
 		}
 		// Populate the grid
 		else {
-			float width = (maximumLatitude - minimumLatitude) / (float) this.grid.length;
-			float height = (maximumLongitude - minimumLongitude) / (float) this.grid[0].length;
-			Rectangle box = new Rectangle(minimumLatitude+(width*this.rowNum), minimumLatitude+(width*(this.rowNum+1)),
-																		minimumLongitude+(height*this.colNum),minimumLongitude+(height*(this.colNum+1)));
-			grid[this.rowNum][this.colNum] = box;
+			float width = (maximumLatitude - minimumLatitude) / (float) grid.length;
+			float height = (maximumLongitude - minimumLongitude) / (float) grid[0].length;
+			// grid[this.rowNum][this.colNum] = box;
+			//
+			//
+			//
+			// System.out.println(this.grid.length);
 
-
-
-			System.out.println(this.grid.length);
-			PopulationQuery left = new PopulationQuery(0, this.grid.length/2, this.data, false);
-			left.fork();
-			PopulationQuery right = new PopulationQuery(this.grid.length/2, this.grid.length, this.data, false);
-			right.compute();
-			left.join();
+			if (this.endCol - this.startCol == 1){
+				// System.out.println("WE MADE IT!");
+				for (int i=0; i<grid.length; i++){
+					Rectangle box = new Rectangle(minimumLatitude+(width*startCol), minimumLatitude+(width*endCol), minimumLongitude+(height*i), minimumLongitude+(height*(i+1)));
+					grid[i][startCol] = box;
+				}
+			}
+			else {
+					PopulationQuery left = new PopulationQuery(startCol, (startCol+endCol)/2, false);
+					left.fork();
+					PopulationQuery right = new PopulationQuery((startCol+endCol)/2, endCol, false);
+					right.compute();
+					left.join();
+			}
 		}
 
 
@@ -316,18 +324,16 @@ public class PopulationQuery extends RecursiveAction{
 		}
 		// Simple and Parallel
 		else if (versionNum == 2) {
+			//Corners
 			PopulationQuery t = new PopulationQuery(0,this.data.dataSize,this.data,true);
 
 			//After the pool is finished, we will have the correct values for the min/max lat/long
 			ForkJoinPool.commonPool().invoke(t);
 
-			PopulationQuery[][] gridThreads = new PopulationQuery[rows][cols];
-			for (int i = 0;i<rows;i++) {
-				for (int j = 0;j<cols;j++) {
-					gridThreads[i][j] = new PopulationQuery(i,j,false);
-					ForkJoinPool.commonPool().invoke(gridThreads[i][j]);
-				}
-			}
+			//filling in the grid
+			PopulationQuery gridThread = new PopulationQuery(0,cols,false);
+			ForkJoinPool.commonPool().invoke(gridThread);
+
 
 			System.out.println("minimumLatitude = "+this.minimumLatitude);
 			System.out.println("maximumLatitude = "+this.maximumLatitude);
@@ -352,36 +358,36 @@ public class PopulationQuery extends RecursiveAction{
 	 */
 	public Pair<Integer, Float> singleInteraction(int w, int s, int e, int n) {
 
-		// float totalPopulation = 0;
-		// int curPopulation = 0;
-		// float percentage = 0;
-		//
-		// Rectangle nwRect = this.grid[n-1][w-1];
-		// Rectangle seRect = this.grid[s-1][e-1];
-		//
-		// float minLatitude = seRect.right;
-		// float maxLatitude = nwRect.left;
-		// float minLongitude = nwRect.top;
-		// float maxLongitude = seRect.bottom;
-		//
-		// System.out.println("Min lat: "+minLatitude);
-		// System.out.println("Max lat: "+maxLatitude);
-		// System.out.println("Min long: "+minLongitude);
-		// System.out.println("Max long: "+maxLongitude);
-		//
-		// for (int i=0;i<this.data.data.length;i++) {
-		// 	if(this.data.data[i] == null)
-		// 		break;
-		// 	if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
-		// 		curPopulation += this.data.data[i].population;
-		// 		//System.out.println("Current population: "+ curPopulation);
-		// 	}
-		//
-		// 	totalPopulation += (float)this.data.data[i].population;
-		//
-		// }
-		//return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
-		return new Pair<Integer, Float>(0,(float) 0);
+		float totalPopulation = 0;
+		int curPopulation = 0;
+		float percentage = 0;
+
+		Rectangle nwRect = this.grid[n-1][w-1];
+		Rectangle seRect = this.grid[s-1][e-1];
+
+		float minLatitude = seRect.right;
+		float maxLatitude = nwRect.left;
+		float minLongitude = nwRect.top;
+		float maxLongitude = seRect.bottom;
+
+		System.out.println("Min lat: "+minLatitude);
+		System.out.println("Max lat: "+maxLatitude);
+		System.out.println("Min long: "+minLongitude);
+		System.out.println("Max long: "+maxLongitude);
+
+		for (int i=0;i<this.data.data.length;i++) {
+			if(this.data.data[i] == null)
+				break;
+			if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
+				curPopulation += this.data.data[i].population;
+				//System.out.println("Current population: "+ curPopulation);
+			}
+
+			totalPopulation += (float)this.data.data[i].population;
+
+		}
+		return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
+		// return new Pair<Integer, Float>(0,(float) 0);
 	}
 
 	// argument 1: file name for input data: pass this to parse
