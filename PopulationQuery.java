@@ -318,7 +318,14 @@ public class PopulationQuery extends RecursiveAction{
 			ForkJoinPool.commonPool().invoke(gridThread);
 
 		}
+
+		/*
+		VERSION 3: SMARTER AND SEQUENTIAL
+		*/
+
 		else if (versionNum == 3) {
+
+			//grid containing population numbers related to the grid squares' coordinates
 			v3Grid = new int[rows][cols];
 
 			float maxLongitude = -100;
@@ -344,6 +351,8 @@ public class PopulationQuery extends RecursiveAction{
 				}
 			}
 
+
+			// Initial population of grid
 			for (int i =0;i<this.data.dataSize;i++) {
 
 				float curLong = this.data.data[i].longitude;
@@ -361,11 +370,12 @@ public class PopulationQuery extends RecursiveAction{
 				v3Grid[rowNumber][colNumber] += this.data.data[i].population;
 			}
 
+			//Agregating sums to the bottom right corner
 			for (int i = 0;i<rows;i++) {
 				for (int j = 0;j<cols;j++) {
 					if(i == 0) {
 						if(j == 0) {
-
+							// No data to add
 						}
 						else {
 							v3Grid[i][j] = v3Grid[i][j] + v3Grid[i][j-1];
@@ -379,12 +389,6 @@ public class PopulationQuery extends RecursiveAction{
 							v3Grid[i][j] = v3Grid[i][j] + v3Grid[i-1][j] + v3Grid[i][j-1] - v3Grid[i-1][j-1];
 						}
 					}
-				}
-			}
-
-			for (int i = 0;i<rows;i++) {
-				for (int j = 0;j<cols;j++) {
-					System.out.println(i+","+j+": "+v3Grid[i][j]);
 				}
 			}
 		}
@@ -436,8 +440,35 @@ public class PopulationQuery extends RecursiveAction{
 			// return new Pair<Integer, Float>(0,(float) 0);
 		}
 		else { //if(versionNum == 3) {
+			float totalPopulation = v3Grid[v3Grid.length-1][v3Grid[0].length-1];
+			int curPopulation = 0;
 
-			return new Pair<Integer, Float>(0,(float) 0);
+			//top case
+			if (s==1){
+				if (w==1){
+					System.out.println(v3Grid[n-1][e-1]);
+					curPopulation = v3Grid[n-1][e-1];
+
+				}
+				else if(w!=1){
+					curPopulation = v3Grid[n-1][e-1] - v3Grid[n-2][w-2];
+				}
+			}
+
+			//not top case at the western edge
+			else {
+				if (w==1){
+					System.out.println(v3Grid[n-1][e-1]);
+					curPopulation = v3Grid[n-1][e-1] - v3Grid[s-2][e-2];
+
+				}
+				else if(w!=1){
+					curPopulation = v3Grid[n-1][e-1] - v3Grid[s-2][e-2] - v3Grid[n-2][w-2] + v3Grid[s-2][w-2];
+				}
+			}
+
+
+			return new Pair<Integer, Float>(curPopulation,(float) (curPopulation/totalPopulation)*100);
 		}
 
 
