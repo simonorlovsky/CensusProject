@@ -40,7 +40,7 @@ public class PopulationQuery extends RecursiveAction{
 	/**
 	 * The maximum number of CensusGroup objects to examine with one thread
 	 */
-	public static final int SEQUENTIAL_THRESHOLD = 10;
+	public static final int SEQUENTIAL_THRESHOLD = 8;
 
 	/**
 	 * There should be only one fork/join pool per program, so this needs to be
@@ -89,12 +89,12 @@ public class PopulationQuery extends RecursiveAction{
 	private static float maximumLongitude = -100;
 
 	/**
-	 * Holds the current column number of the grid
+	 * Holds the current starting column number of the grid
 	 */
 	private int startCol;
 
 	/**
-	 * Holds the current row number of the grid
+	 * Holds the current finishing column number of the grid
 	 */
 	private int endCol;
 
@@ -102,18 +102,6 @@ public class PopulationQuery extends RecursiveAction{
 	 * Determines how the compute function should work
 	 */
 	private static boolean computeSwitch;
-
-	// private int startCol;
-	//
-	// private int endCol;
-	//
-	// private int startRow;
-	//
-	// private int endRow;
-	//
-	// private boolean orientation;
-
-
 
 	/**
 	 * Initialize the query object by parsing the census data in the given file.
@@ -199,6 +187,10 @@ public class PopulationQuery extends RecursiveAction{
 		return result;
 	}
 
+	/**
+	 * Overridden compute method, will either find the corners of the US or create the grid,
+	 * depending on the value of the computeSwitch variable
+	 */
 	@Override
 	public void compute() {
 		// Find the corners of the US rectangle
@@ -206,22 +198,17 @@ public class PopulationQuery extends RecursiveAction{
 			// Threshold reached, find min/max long/lat sequentially
 			if( (this.finish-this.start) < SEQUENTIAL_THRESHOLD) {
 				for(int i=this.start; i<this.finish; i++){
-					// if(this.data.data[i] == null)
-					// 	break;
+
 					if (this.data.data[i].latitude<this.minimumLatitude){
-						// System.out.println(this.data.data[i].latitude);
 						this.minimumLatitude = this.data.data[i].latitude;
 					}
 					if (this.data.data[i].latitude>this.maximumLatitude){
-						// System.out.println(this.data.data[i].latitude);
 						this.maximumLatitude = this.data.data[i].latitude;
 					}
 					if (this.data.data[i].longitude<this.minimumLongitude){
-						// System.out.println(this.data.data[i].latitude);
 						this.minimumLongitude = this.data.data[i].longitude;
 					}
 					if (this.data.data[i].longitude>this.maximumLongitude){
-						// System.out.println(this.data.data[i].latitude);
 						this.maximumLongitude = this.data.data[i].longitude;
 					}
 				}
@@ -230,30 +217,24 @@ public class PopulationQuery extends RecursiveAction{
 				PopulationQuery left = new PopulationQuery(this.start, (this.start+this.finish) / 2, this.data,true);
 				PopulationQuery right = new PopulationQuery( (this.finish+this.start) / 2, this.finish, this.data,true);
 				left.fork();
-				right.fork();
+				right.compute();
 				left.join();
-				right.join();
 			}
 		}
 		// Populate the grid
 		else {
 			float width = (maximumLatitude - minimumLatitude) / (float) grid.length;
 			float height = (maximumLongitude - minimumLongitude) / (float) grid[0].length;
-			// grid[this.rowNum][this.colNum] = box;
-			//
-			//
-			//
-			// System.out.println(this.grid.length);
 
 			if (this.endCol - this.startCol == 1){
-				// System.out.println("WE MADE IT!");
+
 				for (int i=0; i<grid.length; i++){
-					Rectangle box = new Rectangle(minimumLatitude+(width*(i-1)), minimumLatitude+(width*(i)), minimumLongitude+(height*this.startCol), minimumLongitude+(height*(this.startCol+1)));
+					Rectangle box = new Rectangle(minimumLatitude+(width*i), minimumLatitude+(width*i), minimumLongitude+(height*this.startCol), minimumLongitude+(height*(this.endCol)));
 					grid[i][this.startCol] = box;
 				}
 			}
 			else {
-					PopulationQuery left = new PopulationQuery(this.startCol, (this.startCol+this.endCol)/2, false);
+					PopulationQuery left = new PopulationQuery(this.startCol,(this.startCol+this.endCol)/2, false);
 					PopulationQuery right = new PopulationQuery((this.startCol+this.endCol)/2, this.endCol, false);
 					left.fork();
 					right.compute();
@@ -287,25 +268,19 @@ public class PopulationQuery extends RecursiveAction{
 					break;
 
 				if (this.data.data[i].latitude<minLatitude){
-					//System.out.println(this.data.data[i].latitude);
 					minLatitude = this.data.data[i].latitude;
 				}
 				if (this.data.data[i].latitude>maxLatitude){
-					//System.out.println(this.data.data[i].latitude);
 					maxLatitude = this.data.data[i].latitude;
 				}
 				if (this.data.data[i].longitude<minLongitude){
-					//System.out.println(this.data.data[i].latitude);
 					minLongitude = this.data.data[i].longitude;
 				}
 				if (this.data.data[i].longitude>maxLongitude){
-					//System.out.println(this.data.data[i].latitude);
 					maxLongitude = this.data.data[i].longitude;
 				}
 
 			}
-
-			// Need to set the rectangle width/height according to the max/min lat and longitude
 
 			float width = (maxLatitude - minLatitude) / (float) rows;
 			float height = (maxLongitude - minLongitude) / (float) cols;
@@ -332,11 +307,6 @@ public class PopulationQuery extends RecursiveAction{
 			PopulationQuery gridThread = new PopulationQuery(0,cols,false);
 			ForkJoinPool.commonPool().invoke(gridThread);
 
-
-			System.out.println("minimumLatitude = "+this.minimumLatitude);
-			System.out.println("maximumLatitude = "+this.maximumLatitude);
-			System.out.println("minimumLongitude = "+this.minimumLongitude);
-			System.out.println("maximumLongitude = "+this.maximumLongitude);
 		}
 	}
 
@@ -368,14 +338,7 @@ public class PopulationQuery extends RecursiveAction{
 		float minLongitude = nwRect.top;
 		float maxLongitude = seRect.bottom;
 
-		System.out.println("Min lat: "+minLatitude);
-		System.out.println("Max lat: "+maxLatitude);
-		System.out.println("Min long: "+minLongitude);
-		System.out.println("Max long: "+maxLongitude);
-
-		for (int i=0;i<this.data.data.length;i++) {
-			if(this.data.data[i] == null)
-				break;
+		for (int i=0;i<this.data.dataSize;i++) {
 			if(this.data.data[i].latitude > minLatitude) {
 				if(this.data.data[i].latitude < maxLatitude) {
 					if(this.data.data[i].longitude > minLongitude) {
@@ -385,12 +348,7 @@ public class PopulationQuery extends RecursiveAction{
 					}
 				}
 			}
-			// if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
-			// 	curPopulation += this.data.data[i].population;
-				//System.out.println("Current population: "+ curPopulation);
-			//}
-
-			totalPopulation += (float)this.data.data[i].population;
+			totalPopulation += (float) this.data.data[i].population;
 
 		}
 		return new Pair<Integer, Float>(curPopulation, .0f + (float)curPopulation/totalPopulation*100);
