@@ -248,20 +248,18 @@ public class PopulationQuery extends RecursiveAction{
 			if (this.endCol - this.startCol == 1){
 				// System.out.println("WE MADE IT!");
 				for (int i=0; i<grid.length; i++){
-					Rectangle box = new Rectangle(minimumLatitude+(width*startCol), minimumLatitude+(width*endCol), minimumLongitude+(height*i), minimumLongitude+(height*(i+1)));
-					grid[i][startCol] = box;
+					Rectangle box = new Rectangle(minimumLatitude+(width*i), minimumLatitude+(width*(i)), minimumLongitude+(height*this.startCol), minimumLongitude+(height*(this.startCol+1)));
+					grid[i][this.startCol] = box;
 				}
 			}
 			else {
-					PopulationQuery left = new PopulationQuery(startCol, (startCol+endCol)/2, false);
+					PopulationQuery left = new PopulationQuery(this.startCol, (this.startCol+this.endCol)/2, false);
+					PopulationQuery right = new PopulationQuery((this.startCol+this.endCol)/2, this.endCol, false);
 					left.fork();
-					PopulationQuery right = new PopulationQuery((startCol+endCol)/2, endCol, false);
 					right.compute();
 					left.join();
 			}
 		}
-
-
 	}
 
 	/**
