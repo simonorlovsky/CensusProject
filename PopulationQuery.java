@@ -248,7 +248,7 @@ public class PopulationQuery extends RecursiveAction{
 			if (this.endCol - this.startCol == 1){
 				// System.out.println("WE MADE IT!");
 				for (int i=0; i<grid.length; i++){
-					Rectangle box = new Rectangle(minimumLatitude+(width*i), minimumLatitude+(width*(i)), minimumLongitude+(height*this.startCol), minimumLongitude+(height*(this.startCol+1)));
+					Rectangle box = new Rectangle(minimumLatitude+(width*(i-1)), minimumLatitude+(width*(i)), minimumLongitude+(height*this.startCol), minimumLongitude+(height*(this.startCol+1)));
 					grid[i][this.startCol] = box;
 				}
 			}
@@ -314,7 +314,7 @@ public class PopulationQuery extends RecursiveAction{
 
 			for (int i = 0;i<rows;i++) {
 				for (int j = 0;j<cols;j++) {
-					Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i+1)),
+					Rectangle box = new Rectangle(minLatitude+(width*i), minLatitude+(width*(i)),
 																				minLongitude+(height*j),minLongitude+(height*(j+1)));
 					grid[i][j] = box;
 				}
@@ -376,10 +376,19 @@ public class PopulationQuery extends RecursiveAction{
 		for (int i=0;i<this.data.data.length;i++) {
 			if(this.data.data[i] == null)
 				break;
-			if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
-				curPopulation += this.data.data[i].population;
-				//System.out.println("Current population: "+ curPopulation);
+			if(this.data.data[i].latitude > minLatitude) {
+				if(this.data.data[i].latitude < maxLatitude) {
+					if(this.data.data[i].longitude > minLongitude) {
+						if(this.data.data[i].longitude <= maxLongitude) {
+							curPopulation += this.data.data[i].population;
+						}
+					}
+				}
 			}
+			// if (this.data.data[i].latitude >= minLatitude && this.data.data[i].latitude <= maxLatitude && this.data.data[i].longitude >= minLongitude && this.data.data[i].longitude <= maxLongitude) {
+			// 	curPopulation += this.data.data[i].population;
+				//System.out.println("Current population: "+ curPopulation);
+			//}
 
 			totalPopulation += (float)this.data.data[i].population;
 
